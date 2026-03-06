@@ -1,7 +1,7 @@
-<%- include('partials/head', { title: 'Not Found', activePage: 'home' }) %>
+<%- include('partials/head', { title, activePage }) %>
 
 <section class="empty-state error-state">
-  <h1>404</h1>
+  <h1>500</h1>
   <p><%= message %></p>
   <p class="hero-quote">"<%= quote %>"</p>
   <a class="btn btn-primary" href="/">Return Home</a>

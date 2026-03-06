@@ -1,43 +1,47 @@
-<%- include('partials/head', { title: 'Home', activePage: 'home' }) %>
+<%- include('partials/head', { title: 'Home', activePage }) %>
 
-<section class="hero">
-  <p class="eyebrow">Personal Publishing Space</p>
-  <h1>Write, revise, and publish your ideas in one clean workspace.</h1>
-  <p class="hero-copy">
-    This version keeps posts in memory only. Reloading or restarting the server clears the timeline.
-  </p>
-  <a class="btn btn-primary" href="/posts/new">Create a New Post</a>
+<section class="hero-card">
+  <p class="eyebrow">Public Writing Space</p>
+  <h1>Read stories from the community and publish your own voice.</h1>
+  <p class="hero-quote">"<%= quote %>"</p>
+
+  <div class="hero-actions">
+    <% if (currentUser) { %>
+      <a class="btn btn-primary" href="/posts/new">Write a Story</a>
+      <a class="btn btn-soft" href="/dashboard">Open Dashboard</a>
+    <% } else { %>
+      <a class="btn btn-primary" href="/signup">Create Account</a>
+      <a class="btn btn-soft" href="/login">Login</a>
+    <% } %>
+  </div>
 </section>
 
-<% if (posts.length === 0) { %>
-  <section class="empty-state">
-    <h2>No posts yet</h2>
-    <p>Create your first post to see it appear here.</p>
-  </section>
-<% } else { %>
-  <section class="post-grid">
-    <% posts.forEach((post) => { %>
-      <article class="post-card">
-        <h2><a href="/posts/<%= post.id %>"><%= post.title %></a></h2>
-        <p class="meta">By <%= post.author %> • Updated <%= formatDate(post.updatedAt) %></p>
-        <p class="post-preview"><%= excerpt(post.content, 170) %></p>
+<section class="feed-section">
+  <div class="section-head">
+    <h2>Latest Public Posts</h2>
+    <p>Every published post appears here for everyone to read.</p>
+  </div>
 
-        <div class="card-actions">
-          <a class="btn btn-soft" href="/posts/<%= post.id %>">Read</a>
-          <a class="btn btn-soft" href="/posts/<%= post.id %>/edit">Edit</a>
-          <form action="/posts/<%= post.id %>?_method=DELETE" method="post">
-            <button
-              type="submit"
-              class="btn btn-danger"
-              onclick="return confirm('Delete this post permanently?')"
-            >
-              Delete
-            </button>
-          </form>
-        </div>
-      </article>
-    <% }); %>
-  </section>
-<% } %>
+  <% if (posts.length === 0) { %>
+    <article class="empty-state">
+      <h3>No public posts yet</h3>
+      <p>Be the first to publish a story in Inkline Journal.</p>
+    </article>
+  <% } else { %>
+    <div class="post-grid">
+      <% posts.forEach((post) => { %>
+        <article class="post-card">
+          <p class="meta">
+            By <strong><%= post.display_name || post.email.split('@')[0] %></strong> -
+            <%= formatDate(post.updated_at) %>
+          </p>
+          <h3><a href="/posts/<%= post.id %>"><%= post.title %></a></h3>
+          <p class="content-preview"><%= excerpt(post.content, 210) %></p>
+          <a class="text-link" href="/posts/<%= post.id %>">Read full story</a>
+        </article>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
 
 <%- include('partials/footer') %>

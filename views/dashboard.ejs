@@ -1,0 +1,67 @@
+<%- include('partials/head', { title: 'Dashboard', activePage }) %>
+
+<section class="hero-card compact">
+  <p class="eyebrow">Creator Dashboard</p>
+  <h1>Welcome back, <%= currentUserName %>.</h1>
+  <p class="hero-quote">"<%= quote %>"</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="/posts/new">Write New Story</a>
+    <a class="btn btn-soft" href="/">View Public Home</a>
+  </div>
+</section>
+
+<section class="feed-section">
+  <div class="section-head">
+    <h2>Your Stories</h2>
+    <p>You can edit drafts, publish updates, or remove posts anytime.</p>
+  </div>
+
+  <% if (posts.length === 0) { %>
+    <article class="empty-state">
+      <h3>Your dashboard is empty</h3>
+      <p>Create your first story to start building your profile.</p>
+    </article>
+  <% } else { %>
+    <div class="post-grid">
+      <% posts.forEach((post) => { %>
+        <article class="post-card">
+          <p class="meta">
+            Status:
+            <span class="status <%= post.is_published ? 'published' : 'draft' %>">
+              <%= post.is_published ? 'Published' : 'Draft' %>
+            </span>
+            - Updated <%= formatDate(post.updated_at) %>
+          </p>
+
+          <h3>
+            <% if (post.is_published) { %>
+              <a href="/posts/<%= post.id %>"><%= post.title %></a>
+            <% } else { %>
+              <%= post.title %>
+            <% } %>
+          </h3>
+
+          <p class="content-preview"><%= excerpt(post.content, 210) %></p>
+
+          <div class="card-actions">
+            <% if (post.is_published) { %>
+              <a class="btn btn-soft" href="/posts/<%= post.id %>">View</a>
+            <% } %>
+            <a class="btn btn-soft" href="/posts/<%= post.id %>/edit">Edit</a>
+            <form action="/posts/<%= post.id %>?_method=DELETE" method="post">
+              <button
+                type="submit"
+                class="btn btn-danger"
+                onclick="return confirm('Delete this story permanently?')"
+              >
+                Delete
+              </button>
+            </form>
+          </div>
+        </article>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<%- include('partials/footer') %>

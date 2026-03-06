@@ -1,29 +1,33 @@
-# Blog Website (Node + Express + EJS)
+# Inkline Journal
 
-An in-memory blog web application where users can create, view, edit, and delete posts.  
-No database is used in this version, so posts reset when the server restarts.
+Inkline Journal is a public blog platform built with Node.js, Express, EJS, and SQLite.
 
-## Features
+## Core Features
 
-- Create new blog posts
-- View all posts on the home page
-- Open full post pages
-- Edit existing posts
-- Delete posts
-- Responsive, custom-styled UI for desktop and mobile
+- Public home feed where everyone can read published stories
+- User signup with email + password
+- Two-step login: credentials + OTP verification via email
+- Dashboard where logged-in users manage their own stories
+- Create, edit, publish/unpublish, and delete personal posts
+- Persistent data storage in local SQLite (`data/inkline.db`)
+- Responsive premium UI tuned for desktop and mobile
 
 ## Tech Stack
 
 - Node.js
 - Express.js
 - EJS
-- Method Override (for PATCH/DELETE form actions)
-- CSS (custom responsive styling)
+- SQLite (`better-sqlite3`)
+- `express-session`
+- `bcryptjs`
+- `nodemailer`
+- `method-override`
 
-## Run Locally
+## Setup
 
 ```bash
 npm install
+cp .env.example .env
 npm start
 ```
 
@@ -33,12 +37,18 @@ App runs at:
 http://localhost:3000
 ```
 
-For auto-reload during development:
+For development auto-reload:
 
 ```bash
 npm run dev
 ```
 
-## GitHub Pages Version
+## OTP Email Behavior
 
-This repository also includes a static GitHub Pages version under `docs/` with client-side CRUD behavior.
+- If SMTP env vars are configured in `.env`, OTP is sent to user email.
+- If SMTP env vars are missing, OTP runs in local dev mode and is printed in server terminal logs.
+
+## Data Storage
+
+- SQLite database file: `data/inkline.db`
+- The app auto-creates tables on startup.

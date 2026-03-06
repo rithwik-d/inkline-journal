@@ -1,0 +1,31 @@
+<%- include('partials/head', { title, activePage }) %>
+
+<section class="auth-shell">
+  <h1>Login</h1>
+  <p>Enter your credentials, then verify using OTP sent to your email.</p>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert">
+      <ul>
+        <% errors.forEach((error) => { %>
+          <li><%= error %></li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+
+  <form class="post-form" action="/login" method="post">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" value="<%= formData.email %>" required />
+
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required />
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Send OTP</button>
+      <a class="btn btn-soft" href="/signup">Create account</a>
+    </div>
+  </form>
+</section>
+
+<%- include('partials/footer') %>

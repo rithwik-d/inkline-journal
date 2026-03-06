@@ -7,19 +7,35 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&family=Manrope:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/css/styles.css" />
   </head>
   <body>
-    <div class="orb orb-left"></div>
-    <div class="orb orb-right"></div>
+    <div class="atmosphere orb-one"></div>
+    <div class="atmosphere orb-two"></div>
+
     <header class="site-header">
-      <a class="brand" href="/">Inkline Journal</a>
+      <a href="/" class="brand">Inkline Journal</a>
+
       <nav class="site-nav">
         <a class="<%= activePage === 'home' ? 'active' : '' %>" href="/">Home</a>
-        <a class="<%= activePage === 'new' ? 'active' : '' %>" href="/posts/new">Write</a>
+
+        <% if (currentUser) { %>
+          <a class="<%= activePage === 'dashboard' ? 'active' : '' %>" href="/dashboard">Dashboard</a>
+          <a class="<%= activePage === 'new' ? 'active' : '' %>" href="/posts/new">Write</a>
+          <form action="/logout" method="post" class="inline-form">
+            <button type="submit" class="nav-btn">Logout</button>
+          </form>
+        <% } else { %>
+          <a class="<%= activePage === 'login' ? 'active' : '' %>" href="/login">Login</a>
+          <a class="<%= activePage === 'signup' ? 'active' : '' %>" href="/signup">Sign Up</a>
+        <% } %>
       </nav>
     </header>
+
     <main class="page-shell">
+      <% if (flash) { %>
+        <section class="flash flash-<%= flash.type %>"><%= flash.message %></section>
+      <% } %>

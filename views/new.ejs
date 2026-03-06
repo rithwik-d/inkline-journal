@@ -1,33 +1,40 @@
-<%- include('partials/head', { title: 'Write Post', activePage: 'new' }) %>
+<%- include('partials/head', { title: 'Write Story', activePage }) %>
 
 <section class="form-shell">
-  <h1>Write a New Post</h1>
-  <p>Use a clear title and structured body text so your ideas are easier to scan.</p>
+  <h1>Write a Story</h1>
+  <p>Make it honest, make it vivid, make it worth remembering.</p>
 
   <% if (errors.length > 0) { %>
     <div class="alert">
-      <h2>Fix the following issues:</h2>
+      <h2>Fix these issues:</h2>
       <ul>
         <% errors.forEach((error) => { %>
           <li><%= error %></li>
-        <% }); %>
+        <% }) %>
       </ul>
     </div>
   <% } %>
 
   <form class="post-form" action="/posts" method="post">
     <label for="title">Title</label>
-    <input id="title" name="title" maxlength="120" value="<%= formData.title %>" required />
+    <input id="title" name="title" maxlength="130" value="<%= formData.title %>" required />
 
-    <label for="author">Author (optional)</label>
-    <input id="author" name="author" maxlength="80" value="<%= formData.author %>" />
+    <label for="content">Story Content</label>
+    <textarea id="content" name="content" rows="14" required><%= formData.content %></textarea>
 
-    <label for="content">Content</label>
-    <textarea id="content" name="content" rows="12" required><%= formData.content %></textarea>
+    <label class="checkbox-row" for="isPublished">
+      <input
+        id="isPublished"
+        name="isPublished"
+        type="checkbox"
+        <%= formData.isPublished ? 'checked' : '' %>
+      />
+      Publish this story publicly now
+    </label>
 
     <div class="form-actions">
-      <button class="btn btn-primary" type="submit">Publish Post</button>
-      <a class="btn btn-soft" href="/">Cancel</a>
+      <button class="btn btn-primary" type="submit">Save Story</button>
+      <a class="btn btn-soft" href="/dashboard">Cancel</a>
     </div>
   </form>
 </section>

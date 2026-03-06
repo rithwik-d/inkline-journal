@@ -1,0 +1,37 @@
+<%- include('partials/head', { title, activePage }) %>
+
+<section class="auth-shell">
+  <h1>Create Your Account</h1>
+  <p>Join Inkline Journal and start sharing your stories.</p>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert">
+      <ul>
+        <% errors.forEach((error) => { %>
+          <li><%= error %></li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+
+  <form class="post-form" action="/signup" method="post">
+    <label for="displayName">Display Name (optional)</label>
+    <input id="displayName" name="displayName" maxlength="70" value="<%= formData.displayName %>" />
+
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" value="<%= formData.email %>" required />
+
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" minlength="8" required />
+
+    <label for="confirmPassword">Confirm Password</label>
+    <input id="confirmPassword" name="confirmPassword" type="password" minlength="8" required />
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Sign Up</button>
+      <a class="btn btn-soft" href="/login">Already have an account?</a>
+    </div>
+  </form>
+</section>
+
+<%- include('partials/footer') %>

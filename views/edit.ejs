@@ -1,33 +1,40 @@
-<%- include('partials/head', { title: 'Edit Post', activePage: 'home' }) %>
+<%- include('partials/head', { title: 'Edit Story', activePage }) %>
 
 <section class="form-shell">
-  <h1>Edit Post</h1>
-  <p>Last updated <%= formatDate(post.updatedAt) %></p>
+  <h1>Edit Story</h1>
+  <p>Last updated on <%= formatDate(post.updated_at) %>.</p>
 
   <% if (errors.length > 0) { %>
     <div class="alert">
-      <h2>Fix the following issues:</h2>
+      <h2>Fix these issues:</h2>
       <ul>
         <% errors.forEach((error) => { %>
           <li><%= error %></li>
-        <% }); %>
+        <% }) %>
       </ul>
     </div>
   <% } %>
 
   <form class="post-form" action="/posts/<%= post.id %>?_method=PATCH" method="post">
     <label for="title">Title</label>
-    <input id="title" name="title" maxlength="120" value="<%= formData.title %>" required />
+    <input id="title" name="title" maxlength="130" value="<%= formData.title %>" required />
 
-    <label for="author">Author (optional)</label>
-    <input id="author" name="author" maxlength="80" value="<%= formData.author %>" />
+    <label for="content">Story Content</label>
+    <textarea id="content" name="content" rows="14" required><%= formData.content %></textarea>
 
-    <label for="content">Content</label>
-    <textarea id="content" name="content" rows="12" required><%= formData.content %></textarea>
+    <label class="checkbox-row" for="isPublished">
+      <input
+        id="isPublished"
+        name="isPublished"
+        type="checkbox"
+        <%= formData.isPublished ? 'checked' : '' %>
+      />
+      Publish this story publicly
+    </label>
 
     <div class="form-actions">
-      <button class="btn btn-primary" type="submit">Save Changes</button>
-      <a class="btn btn-soft" href="/posts/<%= post.id %>">Cancel</a>
+      <button class="btn btn-primary" type="submit">Update Story</button>
+      <a class="btn btn-soft" href="/dashboard">Back to Dashboard</a>
     </div>
   </form>
 </section>
