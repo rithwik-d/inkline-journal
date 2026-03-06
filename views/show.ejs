@@ -1,0 +1,23 @@
+<%- include('partials/head', { title: post.title, activePage: 'home' }) %>
+
+<article class="article-shell">
+  <p class="meta">By <%= post.author %> • Published <%= formatDate(post.createdAt) %></p>
+  <h1><%= post.title %></h1>
+  <p class="article-content"><%= post.content %></p>
+
+  <div class="article-actions">
+    <a class="btn btn-soft" href="/">Back to Home</a>
+    <a class="btn btn-soft" href="/posts/<%= post.id %>/edit">Edit</a>
+    <form action="/posts/<%= post.id %>?_method=DELETE" method="post">
+      <button
+        type="submit"
+        class="btn btn-danger"
+        onclick="return confirm('Delete this post permanently?')"
+      >
+        Delete
+      </button>
+    </form>
+  </div>
+</article>
+
+<%- include('partials/footer') %>

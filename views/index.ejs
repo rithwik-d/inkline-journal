@@ -1,0 +1,43 @@
+<%- include('partials/head', { title: 'Home', activePage: 'home' }) %>
+
+<section class="hero">
+  <p class="eyebrow">Personal Publishing Space</p>
+  <h1>Write, revise, and publish your ideas in one clean workspace.</h1>
+  <p class="hero-copy">
+    This version keeps posts in memory only. Reloading or restarting the server clears the timeline.
+  </p>
+  <a class="btn btn-primary" href="/posts/new">Create a New Post</a>
+</section>
+
+<% if (posts.length === 0) { %>
+  <section class="empty-state">
+    <h2>No posts yet</h2>
+    <p>Create your first post to see it appear here.</p>
+  </section>
+<% } else { %>
+  <section class="post-grid">
+    <% posts.forEach((post) => { %>
+      <article class="post-card">
+        <h2><a href="/posts/<%= post.id %>"><%= post.title %></a></h2>
+        <p class="meta">By <%= post.author %> • Updated <%= formatDate(post.updatedAt) %></p>
+        <p class="post-preview"><%= excerpt(post.content, 170) %></p>
+
+        <div class="card-actions">
+          <a class="btn btn-soft" href="/posts/<%= post.id %>">Read</a>
+          <a class="btn btn-soft" href="/posts/<%= post.id %>/edit">Edit</a>
+          <form action="/posts/<%= post.id %>?_method=DELETE" method="post">
+            <button
+              type="submit"
+              class="btn btn-danger"
+              onclick="return confirm('Delete this post permanently?')"
+            >
+              Delete
+            </button>
+          </form>
+        </div>
+      </article>
+    <% }); %>
+  </section>
+<% } %>
+
+<%- include('partials/footer') %>

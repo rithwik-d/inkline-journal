@@ -1,0 +1,35 @@
+<%- include('partials/head', { title: 'Write Post', activePage: 'new' }) %>
+
+<section class="form-shell">
+  <h1>Write a New Post</h1>
+  <p>Use a clear title and structured body text so your ideas are easier to scan.</p>
+
+  <% if (errors.length > 0) { %>
+    <div class="alert">
+      <h2>Fix the following issues:</h2>
+      <ul>
+        <% errors.forEach((error) => { %>
+          <li><%= error %></li>
+        <% }); %>
+      </ul>
+    </div>
+  <% } %>
+
+  <form class="post-form" action="/posts" method="post">
+    <label for="title">Title</label>
+    <input id="title" name="title" maxlength="120" value="<%= formData.title %>" required />
+
+    <label for="author">Author (optional)</label>
+    <input id="author" name="author" maxlength="80" value="<%= formData.author %>" />
+
+    <label for="content">Content</label>
+    <textarea id="content" name="content" rows="12" required><%= formData.content %></textarea>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Publish Post</button>
+      <a class="btn btn-soft" href="/">Cancel</a>
+    </div>
+  </form>
+</section>
+
+<%- include('partials/footer') %>
