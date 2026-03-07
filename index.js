@@ -13,7 +13,10 @@ const PORT = Number(process.env.PORT) || 3000;
 const EMAIL_VERIFY_TTL_HOURS = Number(process.env.EMAIL_VERIFY_TTL_HOURS) || 24;
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 
-const dataDirectory = path.join(__dirname, "data");
+const isVercelRuntime = process.env.VERCEL === "1" || process.env.VERCEL === "true";
+const dataDirectory = isVercelRuntime
+  ? path.join("/tmp", "inkline-data")
+  : path.join(__dirname, "data");
 fs.mkdirSync(dataDirectory, { recursive: true });
 
 const db = new Database(path.join(dataDirectory, "inkline.db"));

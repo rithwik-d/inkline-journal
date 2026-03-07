@@ -53,3 +53,4 @@ npm run dev
 
 - SQLite database file: `data/inkline.db`
 - The app auto-creates tables on startup.
+- On Vercel, SQLite runs from `/tmp/inkline-data/inkline.db` (writable but ephemeral).
