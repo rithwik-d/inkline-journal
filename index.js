@@ -3,13 +3,15 @@ const session = require("express-session");
 const methodOverride = require("method-override");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const Database = require("better-sqlite3");
 const nodemailer = require("nodemailer");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
-const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES) || 10;
+const EMAIL_VERIFY_TTL_HOURS = Number(process.env.EMAIL_VERIFY_TTL_HOURS) || 24;
+const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 
 const dataDirectory = path.join(__dirname, "data");
 fs.mkdirSync(dataDirectory, { recursive: true });
@@ -27,10 +29,10 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
 
-  CREATE TABLE IF NOT EXISTS login_otps (
+  CREATE TABLE IF NOT EXISTS email_verifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    otp_code TEXT NOT NULL,
+    token TEXT UNIQUE NOT NULL,
     expires_at INTEGER NOT NULL,
     consumed_at INTEGER,
     created_at INTEGER NOT NULL,
@@ -50,28 +52,57 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_posts_published_updated ON posts(is_published, updated_at DESC);
   CREATE INDEX IF NOT EXISTS idx_posts_user_updated ON posts(user_id, updated_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_otps_user_created ON login_otps(user_id, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_email_verifications_user_created ON email_verifications(user_id, created_at DESC);
 `);
+
+function columnExists(tableName, columnName) {
+  return db
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all()
+    .some((column) => column.name === columnName);
+}
+
+if (!columnExists("users", "is_verified")) {
+  db.exec("ALTER TABLE users ADD COLUMN is_verified INTEGER NOT NULL DEFAULT 0");
+}
+
+if (!columnExists("users", "email_verified_at")) {
+  db.exec("ALTER TABLE users ADD COLUMN email_verified_at INTEGER");
+}
 
 const statements = {
   findUserByEmail: db.prepare(`SELECT * FROM users WHERE email = ?`),
   findUserById: db.prepare(`SELECT * FROM users WHERE id = ?`),
   insertUser: db.prepare(`
-    INSERT INTO users (email, password_hash, display_name, created_at)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO users (email, password_hash, display_name, is_verified, email_verified_at, created_at)
+    VALUES (?, ?, ?, 0, NULL, ?)
   `),
-  insertOtp: db.prepare(`
-    INSERT INTO login_otps (user_id, otp_code, expires_at, consumed_at, created_at)
+  updateUnverifiedUserCredentials: db.prepare(`
+    UPDATE users
+    SET password_hash = ?, display_name = ?
+    WHERE id = ? AND is_verified = 0
+  `),
+  markUserVerified: db.prepare(`
+    UPDATE users
+    SET is_verified = 1, email_verified_at = ?
+    WHERE id = ?
+  `),
+  clearEmailVerificationsForUser: db.prepare(`DELETE FROM email_verifications WHERE user_id = ?`),
+  insertEmailVerification: db.prepare(`
+    INSERT INTO email_verifications (user_id, token, expires_at, consumed_at, created_at)
     VALUES (?, ?, ?, NULL, ?)
   `),
-  getLatestOtpForUser: db.prepare(`
+  getEmailVerificationByToken: db.prepare(`
     SELECT *
-    FROM login_otps
-    WHERE user_id = ? AND consumed_at IS NULL
-    ORDER BY created_at DESC
+    FROM email_verifications
+    WHERE token = ?
     LIMIT 1
   `),
-  consumeOtp: db.prepare(`UPDATE login_otps SET consumed_at = ? WHERE id = ?`),
+  consumeEmailVerification: db.prepare(`
+    UPDATE email_verifications
+    SET consumed_at = ?
+    WHERE id = ?
+  `),
   listPublicPosts: db.prepare(`
     SELECT
       posts.id,
@@ -254,11 +285,6 @@ function setFlash(req, type, message) {
   req.session.flash = { type, message };
 }
 
-function clearPendingOtp(sessionObject) {
-  delete sessionObject.pendingOtpUserId;
-  delete sessionObject.pendingOtpEmail;
-}
-
 function renderNotFound(res, message = "The requested content was not found.") {
   return res.status(404).render("404", { message, quote: getQuoteForToday() });
 }
@@ -276,23 +302,28 @@ function requireAuth(req, res, next) {
   return next();
 }
 
-function generateOtpCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+function generateVerificationToken() {
+  return crypto.randomBytes(32).toString("hex");
 }
 
-async function sendOtpEmail(email, otpCode) {
+async function sendVerificationEmail(email, verificationLink) {
   if (!mailTransporter) {
     // eslint-disable-next-line no-console
-    console.log(`[OTP] ${email} => ${otpCode}`);
+    console.log(`[VERIFY LINK] ${email} => ${verificationLink}`);
     return;
   }
 
   await mailTransporter.sendMail({
     from: smtpFrom,
     to: email,
-    subject: "Your Inkline Journal login OTP",
-    text: `Your one-time login code is ${otpCode}. It expires in ${OTP_TTL_MINUTES} minutes.`,
-    html: `<p>Your one-time login code is <strong>${otpCode}</strong>.</p><p>It expires in ${OTP_TTL_MINUTES} minutes.</p>`,
+    subject: "Verify your Inkline Journal account",
+    text: `Welcome to Inkline Journal.\n\nVerify your email by opening this link:\n${verificationLink}\n\nThis link expires in ${EMAIL_VERIFY_TTL_HOURS} hours.`,
+    html: `
+      <p>Welcome to Inkline Journal.</p>
+      <p>Verify your email by clicking this link:</p>
+      <p><a href="${verificationLink}">${verificationLink}</a></p>
+      <p>This link expires in ${EMAIL_VERIFY_TTL_HOURS} hours.</p>
+    `,
   });
 }
 
@@ -350,7 +381,7 @@ app.post("/signup", async (req, res) => {
   }
 
   const existingUser = email ? statements.findUserByEmail.get(email) : null;
-  if (existingUser) {
+  if (existingUser && existingUser.is_verified) {
     errors.push("An account with this email already exists.");
   }
 
@@ -363,16 +394,46 @@ app.post("/signup", async (req, res) => {
     });
   }
 
+  const now = Date.now();
   const passwordHash = await bcrypt.hash(password, 12);
-  statements.insertUser.run(email, passwordHash, displayName || null, Date.now());
+  let userId;
 
-  setFlash(req, "success", "Account created. Log in to receive your OTP.");
+  if (existingUser) {
+    statements.updateUnverifiedUserCredentials.run(passwordHash, displayName || null, existingUser.id);
+    userId = existingUser.id;
+  } else {
+    const insertResult = statements.insertUser.run(email, passwordHash, displayName || null, now);
+    userId = Number(insertResult.lastInsertRowid);
+  }
+
+  const verificationToken = generateVerificationToken();
+  const expiresAt = now + EMAIL_VERIFY_TTL_HOURS * 60 * 60 * 1000;
+  statements.clearEmailVerificationsForUser.run(userId);
+  statements.insertEmailVerification.run(userId, verificationToken, expiresAt, now);
+  const verificationLink = `${APP_BASE_URL}/verify-email?token=${verificationToken}`;
+
+  try {
+    await sendVerificationEmail(email, verificationLink);
+  } catch (error) {
+    return res.status(500).render("signup", {
+      title: "Sign Up",
+      activePage: "signup",
+      formData: { email, displayName },
+      errors: ["Unable to send verification email right now. Please try again."],
+    });
+  }
+
+  if (!mailTransporter) {
+    setFlash(req, "info", "Verification link is in console mode for local development. Check the server terminal.");
+  } else {
+    setFlash(req, "success", "Account created. Check your email and verify your account before signing in.");
+  }
   return res.redirect("/login");
 });
 
 app.get("/login", (req, res) =>
   res.render("login", {
-    title: "Login",
+    title: "Sign In",
     activePage: "login",
     formData: { email: "" },
     errors: [],
@@ -405,92 +466,48 @@ app.post("/login", async (req, res) => {
 
   if (errors.length > 0) {
     return res.status(400).render("login", {
-      title: "Login",
+      title: "Sign In",
       activePage: "login",
       formData: { email: credentials.email },
       errors,
     });
   }
 
-  const otpCode = generateOtpCode();
-  const now = Date.now();
-  const expiresAt = now + OTP_TTL_MINUTES * 60 * 1000;
-  statements.insertOtp.run(user.id, otpCode, expiresAt, now);
-
-  try {
-    await sendOtpEmail(user.email, otpCode);
-  } catch (error) {
-    return res.status(500).render("login", {
-      title: "Login",
+  if (!user.is_verified) {
+    return res.status(403).render("login", {
+      title: "Sign In",
       activePage: "login",
       formData: { email: credentials.email },
-      errors: ["Unable to send OTP email right now. Try again in a minute."],
+      errors: ["Verify your email first using the signup verification link."],
     });
   }
 
-  req.session.pendingOtpUserId = user.id;
-  req.session.pendingOtpEmail = user.email;
+  req.session.userId = user.id;
 
-  if (!mailTransporter) {
-    setFlash(
-      req,
-      "info",
-      "OTP delivery is in console mode for local development. Check the server terminal for the code."
-    );
-  }
-
-  return res.redirect("/verify-otp");
+  setFlash(req, "success", "Sign in successful. Welcome to your writing dashboard.");
+  return res.redirect("/dashboard");
 });
 
-app.get("/verify-otp", (req, res) => {
-  if (!req.session.pendingOtpUserId || !req.session.pendingOtpEmail) {
-    setFlash(req, "error", "Start with login to verify your OTP.");
+app.get("/verify-email", (req, res) => {
+  const token = String(req.query.token || "").trim();
+  if (!token) {
+    setFlash(req, "error", "Verification link is invalid.");
     return res.redirect("/login");
   }
 
-  return res.render("verify-otp", {
-    title: "Verify OTP",
-    activePage: "login",
-    pendingEmail: req.session.pendingOtpEmail,
-    errors: [],
-  });
-});
-
-app.post("/verify-otp", (req, res) => {
-  const otpInput = (req.body.otp || "").trim();
-
-  if (!req.session.pendingOtpUserId || !req.session.pendingOtpEmail) {
-    setFlash(req, "error", "Start with login to verify your OTP.");
-    return res.redirect("/login");
-  }
-
-  if (!/^\d{6}$/.test(otpInput)) {
-    return res.status(400).render("verify-otp", {
-      title: "Verify OTP",
-      activePage: "login",
-      pendingEmail: req.session.pendingOtpEmail,
-      errors: ["Enter the 6-digit OTP code."],
-    });
-  }
-
-  const otpRecord = statements.getLatestOtpForUser.get(req.session.pendingOtpUserId);
+  const record = statements.getEmailVerificationByToken.get(token);
   const now = Date.now();
 
-  if (!otpRecord || otpRecord.expires_at < now || otpRecord.otp_code !== otpInput) {
-    return res.status(400).render("verify-otp", {
-      title: "Verify OTP",
-      activePage: "login",
-      pendingEmail: req.session.pendingOtpEmail,
-      errors: ["Invalid or expired OTP. Please login again to request a new code."],
-    });
+  if (!record || record.consumed_at || record.expires_at < now) {
+    setFlash(req, "error", "Verification link is invalid or expired.");
+    return res.redirect("/login");
   }
 
-  statements.consumeOtp.run(now, otpRecord.id);
-  req.session.userId = req.session.pendingOtpUserId;
-  clearPendingOtp(req.session);
+  statements.consumeEmailVerification.run(now, record.id);
+  statements.markUserVerified.run(now, record.user_id);
 
-  setFlash(req, "success", "Login successful. Welcome to your writing dashboard.");
-  return res.redirect("/dashboard");
+  setFlash(req, "success", "Email verified. You can sign in now.");
+  return res.redirect("/login");
 });
 
 app.post("/logout", (req, res) => {

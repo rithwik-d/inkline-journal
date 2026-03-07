@@ -6,7 +6,8 @@ Inkline Journal is a public blog platform built with Node.js, Express, EJS, and 
 
 - Public home feed where everyone can read published stories
 - User signup with email + password
-- Two-step login: credentials + OTP verification via email
+- One-time email verification link during signup
+- Password-based sign-in after email is verified
 - Dashboard where logged-in users manage their own stories
 - Create, edit, publish/unpublish, and delete personal posts
 - Persistent data storage in local SQLite (`data/inkline.db`)
@@ -43,10 +44,10 @@ For development auto-reload:
 npm run dev
 ```
 
-## OTP Email Behavior
+## Verification Email Behavior
 
-- If SMTP env vars are configured in `.env`, OTP is sent to user email.
-- If SMTP env vars are missing, OTP runs in local dev mode and is printed in server terminal logs.
+- If SMTP env vars are configured in `.env`, signup verification links are emailed to users.
+- If SMTP env vars are missing, verification links run in local dev mode and are printed in server terminal logs.
 
 ## Data Storage
 

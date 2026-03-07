@@ -1,8 +1,8 @@
 <%- include('partials/head', { title, activePage }) %>
 
 <section class="auth-shell">
-  <h1>Login</h1>
-  <p>Enter your credentials, then verify using OTP sent to your email.</p>
+  <h1>Sign In</h1>
+  <p>Enter your credentials to access your writing dashboard.</p>
 
   <% if (errors.length > 0) { %>
     <div class="alert">
@@ -22,7 +22,7 @@
     <input id="password" name="password" type="password" required />
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Send OTP</button>
+      <button type="submit" class="btn btn-primary">Sign In</button>
       <a class="btn btn-soft" href="/signup">Create account</a>
     </div>
   </form>
