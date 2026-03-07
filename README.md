@@ -1,16 +1,15 @@
 # Inkline Journal
 
-Inkline Journal is a public blog platform built with Node.js, Express, EJS, and SQLite.
+Inkline Journal is a public blog platform built with Node.js, Express, EJS, and Postgres.
 
 ## Core Features
 
 - Public home feed where everyone can read published stories
 - User signup with email + password
-- One-time email verification link during signup
-- Password-based sign-in after email is verified
+- Password-based sign-in
 - Dashboard where logged-in users manage their own stories
 - Create, edit, publish/unpublish, and delete personal posts
-- Persistent data storage in local SQLite (`data/inkline.db`)
+- Persistent data storage in Postgres
 - Responsive premium UI tuned for desktop and mobile
 
 ## Tech Stack
@@ -18,10 +17,9 @@ Inkline Journal is a public blog platform built with Node.js, Express, EJS, and 
 - Node.js
 - Express.js
 - EJS
-- SQLite (`better-sqlite3`)
+- Postgres (`pg`)
 - `express-session`
 - `bcryptjs`
-- `nodemailer`
 - `method-override`
 
 ## Setup
@@ -44,13 +42,18 @@ For development auto-reload:
 npm run dev
 ```
 
-## Verification Email Behavior
+## Environment
 
-- If SMTP env vars are configured in `.env`, signup verification links are emailed to users.
-- If SMTP env vars are missing, verification links run in local dev mode and are printed in server terminal logs.
+Required:
+
+- `DATABASE_URL` (Postgres connection string)
+- `SESSION_SECRET`
+
+Optional:
+
+- `PGSSL` (`true` for hosted SSL-required Postgres providers, otherwise `false`)
 
 ## Data Storage
 
-- SQLite database file: `data/inkline.db`
-- The app auto-creates tables on startup.
-- On Vercel, SQLite runs from `/tmp/inkline-data/inkline.db` (writable but ephemeral).
+- Postgres tables are auto-created on startup.
+- Data is persistent and can be managed via `psql`, pgAdmin, or your cloud provider dashboard.

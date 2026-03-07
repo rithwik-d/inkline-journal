@@ -4,3 +4,5 @@ npm-debug.log*
 .env
 data/*.db
 data/*.db-*
+.vercel
+.npm-cache/
