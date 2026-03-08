@@ -4,5 +4,23 @@
       <p>Inkline Journal - Public stories with private writing space.</p>
       <p>&copy; <%= currentYear %> All rights reserved.</p>
     </footer>
+    <script>
+      (() => {
+        const formatter = new Intl.DateTimeFormat(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        });
+
+        document.querySelectorAll("[data-local-timestamp]").forEach((node) => {
+          const timestamp = Number(node.getAttribute("data-local-timestamp"));
+
+          if (!Number.isFinite(timestamp)) {
+            return;
+          }
+
+          node.textContent = formatter.format(new Date(timestamp));
+        });
+      })();
+    </script>
   </body>
 </html>

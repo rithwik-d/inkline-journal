@@ -3,7 +3,7 @@
 <article class="article-shell">
   <p class="meta">
     By <strong><%= post.display_name || post.email.split('@')[0] %></strong> -
-    Published <%= formatDate(post.created_at) %>
+    Published <time data-local-timestamp="<%= post.created_at %>"><%= formatDate(post.created_at) %></time>
   </p>
   <h1><%= post.title %></h1>
   <p class="article-content"><%= post.content %></p>

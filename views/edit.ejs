@@ -2,7 +2,10 @@
 
 <section class="form-shell">
   <h1>Edit Story</h1>
-  <p>Last updated on <%= formatDate(post.updated_at) %>.</p>
+  <p>
+    Last updated on
+    <time data-local-timestamp="<%= post.updated_at %>"><%= formatDate(post.updated_at) %></time>.
+  </p>
 
   <% if (errors.length > 0) { %>
     <div class="alert">

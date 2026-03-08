@@ -30,7 +30,7 @@
             <span class="status <%= post.is_published ? 'published' : 'draft' %>">
               <%= post.is_published ? 'Published' : 'Draft' %>
             </span>
-            - Updated <%= formatDate(post.updated_at) %>
+            - Updated <time data-local-timestamp="<%= post.updated_at %>"><%= formatDate(post.updated_at) %></time>
           </p>
 
           <h3>
