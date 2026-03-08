@@ -35,7 +35,7 @@
       </nav>
     </header>
 
-    <main class="page-shell">
+    <main class="page-shell <%= activePage === 'login' || activePage === 'signup' ? 'page-shell-auth' : '' %>">
       <% if (flash) { %>
         <section class="flash flash-<%= flash.type %>"><%= flash.message %></section>
       <% } %>

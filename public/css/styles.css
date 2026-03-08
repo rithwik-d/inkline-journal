@@ -142,6 +142,11 @@ body {
   color: #24497d;
 }
 
+.page-shell-auth .flash {
+  width: min(860px, 100%);
+  margin-inline: auto;
+}
+
 .hero-card {
   position: relative;
   overflow: hidden;
