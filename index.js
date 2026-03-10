@@ -4,11 +4,15 @@ const express = require("express");
 const session = require("express-session");
 const methodOverride = require("method-override");
 const path = require("path");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
+const nodemailer = require("nodemailer");
 const { Pool } = require("pg");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const EMAIL_VERIFY_TTL_HOURS = Number(process.env.EMAIL_VERIFY_TTL_HOURS) || 24;
+const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 
 function readBooleanFlag(value, defaultValue = false) {
   if (value === undefined) {
@@ -55,6 +59,29 @@ async function initializeDatabase() {
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       display_name TEXT,
+      created_at BIGINT NOT NULL,
+      is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+      email_verified_at BIGINT
+    );
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE;
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS email_verified_at BIGINT;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_verifications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token TEXT UNIQUE NOT NULL,
+      expires_at BIGINT NOT NULL,
+      consumed_at BIGINT,
       created_at BIGINT NOT NULL
     );
   `);
@@ -79,6 +106,11 @@ async function initializeDatabase() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_posts_user_updated
       ON posts(user_id, updated_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_email_verifications_user_created
+      ON email_verifications(user_id, created_at DESC);
   `);
 
 }
@@ -106,14 +138,73 @@ async function findUserById(userId) {
 async function createUser(email, passwordHash, displayName, createdAt) {
   const row = await queryOne(
     `
-      INSERT INTO users (email, password_hash, display_name, created_at)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO users (email, password_hash, display_name, created_at, is_verified, email_verified_at)
+      VALUES ($1, $2, $3, $4, FALSE, NULL)
       RETURNING id
     `,
     [email, passwordHash, displayName, createdAt]
   );
 
   return row.id;
+}
+
+async function updateUnverifiedUserCredentials(userId, passwordHash, displayName) {
+  await pool.query(
+    `
+      UPDATE users
+      SET password_hash = $1, display_name = $2
+      WHERE id = $3 AND is_verified = FALSE
+    `,
+    [passwordHash, displayName, userId]
+  );
+}
+
+async function markUserVerified(verifiedAt, userId) {
+  await pool.query(
+    `
+      UPDATE users
+      SET is_verified = TRUE, email_verified_at = $1
+      WHERE id = $2
+    `,
+    [verifiedAt, userId]
+  );
+}
+
+async function clearEmailVerificationsForUser(userId) {
+  await pool.query(`DELETE FROM email_verifications WHERE user_id = $1`, [userId]);
+}
+
+async function insertEmailVerification(userId, token, expiresAt, createdAt) {
+  await pool.query(
+    `
+      INSERT INTO email_verifications (user_id, token, expires_at, consumed_at, created_at)
+      VALUES ($1, $2, $3, NULL, $4)
+    `,
+    [userId, token, expiresAt, createdAt]
+  );
+}
+
+async function getEmailVerificationByToken(token) {
+  return queryOne(
+    `
+      SELECT *
+      FROM email_verifications
+      WHERE token = $1
+      LIMIT 1
+    `,
+    [token]
+  );
+}
+
+async function consumeEmailVerification(consumedAt, verificationId) {
+  await pool.query(
+    `
+      UPDATE email_verifications
+      SET consumed_at = $1
+      WHERE id = $2
+    `,
+    [consumedAt, verificationId]
+  );
 }
 
 async function listPublicPosts() {
@@ -205,6 +296,26 @@ async function updatePost(postId, title, content, isPublished, updatedAt) {
 async function deletePost(postId) {
   await pool.query(`DELETE FROM posts WHERE id = $1`, [postId]);
 }
+
+const smtpHost = process.env.SMTP_HOST;
+const smtpPort = Number(process.env.SMTP_PORT);
+const smtpUser = process.env.SMTP_USER;
+const smtpPass = process.env.SMTP_PASS;
+const smtpFrom = process.env.SMTP_FROM || smtpUser || "no-reply@inkline-journal.local";
+
+const hasSmtpCredentials = Boolean(smtpHost && smtpPort && smtpUser && smtpPass);
+
+const mailTransporter = hasSmtpCredentials
+  ? nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    })
+  : null;
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -335,6 +446,30 @@ function requireAuth(req, res, next) {
   return next();
 }
 
+function generateVerificationToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+async function sendVerificationEmail(email, verificationLink) {
+  if (!mailTransporter) {
+    // eslint-disable-next-line no-console
+    console.log(`[VERIFY LINK] ${email} => ${verificationLink}`);
+    return;
+  }
+
+  await mailTransporter.sendMail({
+    from: smtpFrom,
+    to: email,
+    subject: "Verify your Inkline Journal account",
+    text: `Verify your email by opening this link:\n${verificationLink}\n\nThis link expires in ${EMAIL_VERIFY_TTL_HOURS} hours.`,
+    html: `
+      <p>Verify your email by clicking this link:</p>
+      <p><a href="${verificationLink}">${verificationLink}</a></p>
+      <p>This link expires in ${EMAIL_VERIFY_TTL_HOURS} hours.</p>
+    `,
+  });
+}
+
 app.use(async (req, res, next) => {
   try {
     res.locals.flash = req.session.flash || null;
@@ -398,7 +533,7 @@ app.post("/signup", async (req, res, next) => {
     }
 
     const existingUser = email ? await findUserByEmail(email) : null;
-    if (existingUser) {
+    if (existingUser && existingUser.is_verified) {
       errors.push("An account with this email already exists.");
     }
 
@@ -413,9 +548,33 @@ app.post("/signup", async (req, res, next) => {
 
     const now = Date.now();
     const passwordHash = await bcrypt.hash(password, 12);
-    await createUser(email, passwordHash, displayName || null, now);
+    let userId;
 
-    setFlash(req, "success", "Account created. Sign in to continue.");
+    if (existingUser) {
+      await updateUnverifiedUserCredentials(existingUser.id, passwordHash, displayName || null);
+      userId = existingUser.id;
+    } else {
+      userId = await createUser(email, passwordHash, displayName || null, now);
+    }
+
+    const verificationToken = generateVerificationToken();
+    const expiresAt = now + EMAIL_VERIFY_TTL_HOURS * 60 * 60 * 1000;
+    await clearEmailVerificationsForUser(userId);
+    await insertEmailVerification(userId, verificationToken, expiresAt, now);
+
+    const verificationLink = `${APP_BASE_URL}/verify-email?token=${verificationToken}`;
+    try {
+      await sendVerificationEmail(email, verificationLink);
+    } catch (mailError) {
+      return res.status(500).render("signup", {
+        title: "Sign Up",
+        activePage: "signup",
+        formData: { email, displayName },
+        errors: ["Unable to send verification link right now. Please try again."],
+      });
+    }
+
+    setFlash(req, "success", "Please verify the link sent to your email address to continue");
 
     return res.redirect("/login");
   } catch (error) {
@@ -464,10 +623,45 @@ app.post("/login", async (req, res, next) => {
       });
     }
 
+    if (!user.is_verified) {
+      return res.status(403).render("login", {
+        title: "Sign In",
+        activePage: "login",
+        formData: { email: credentials.email },
+        errors: ["Please verify your email address before signing in."],
+      });
+    }
+
     req.session.userId = user.id;
 
     setFlash(req, "success", "Sign in successful. Welcome to your writing dashboard.");
     return res.redirect("/dashboard");
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.get("/verify-email", async (req, res, next) => {
+  try {
+    const token = String(req.query.token || "").trim();
+    if (!token) {
+      setFlash(req, "error", "Verification link is invalid.");
+      return res.redirect("/login");
+    }
+
+    const record = await getEmailVerificationByToken(token);
+    const now = Date.now();
+
+    if (!record || record.consumed_at || Number(record.expires_at) < now) {
+      setFlash(req, "error", "Verification link is invalid or expired.");
+      return res.redirect("/login");
+    }
+
+    await consumeEmailVerification(now, record.id);
+    await markUserVerified(now, record.user_id);
+
+    setFlash(req, "success", "Email verified successfully. Please sign in.");
+    return res.redirect("/login");
   } catch (error) {
     return next(error);
   }

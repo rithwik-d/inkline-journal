@@ -6,7 +6,8 @@ Inkline Journal is a public blog platform built with Node.js, Express, EJS, and 
 
 - Public home feed where everyone can read published stories
 - User signup with email + password
-- Password-based sign-in
+- One-time email verification link during signup
+- Password-based sign-in after verification
 - Dashboard where logged-in users manage their own stories
 - Create, edit, publish/unpublish, and delete personal posts
 - Persistent data storage in Postgres
@@ -20,6 +21,7 @@ Inkline Journal is a public blog platform built with Node.js, Express, EJS, and 
 - Postgres (`pg`)
 - `express-session`
 - `bcryptjs`
+- `nodemailer`
 - `method-override`
 
 ## Setup
@@ -52,6 +54,15 @@ Required:
 Optional:
 
 - `PGSSL` (`true` for hosted SSL-required Postgres providers, otherwise `false`)
+- `APP_BASE_URL` (for verification links)
+- `EMAIL_VERIFY_TTL_HOURS`
+- SMTP variables for email delivery
+
+## Verification Flow
+
+- On signup, the app emails a one-time verification link.
+- User clicks the link and is redirected to login.
+- Login works with email + password after verification.
 
 ## Data Storage
 
