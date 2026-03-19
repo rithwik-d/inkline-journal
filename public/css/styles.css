@@ -212,6 +212,11 @@ h3 {
   margin-top: 1.1rem;
 }
 
+.card-actions form {
+  margin: 0;
+  display: inline-flex;
+}
+
 .feed-section {
   margin-top: 1rem;
 }
@@ -389,11 +394,15 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  appearance: none;
+  -webkit-appearance: none;
   border: 1px solid transparent;
   border-radius: 999px;
   padding: 0.52rem 0.95rem;
+  font-family: inherit;
   font-size: 0.92rem;
   font-weight: 700;
+  line-height: 1.2;
   text-decoration: none;
   cursor: pointer;
   transition: all 0.2s ease;
