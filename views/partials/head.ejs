@@ -37,5 +37,5 @@
 
     <main class="page-shell <%= activePage === 'login' || activePage === 'signup' ? 'page-shell-auth' : '' %>">
       <% if (flash) { %>
-        <section class="flash flash-<%= flash.type %>"><%= flash.message %></section>
+        <section class="flash flash-<%= flash.type %>" data-flash-message><%= flash.message %></section>
       <% } %>

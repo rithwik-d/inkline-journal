@@ -20,6 +20,19 @@
 
           node.textContent = formatter.format(new Date(timestamp));
         });
+
+        const flash = document.querySelector("[data-flash-message]");
+        if (!flash) {
+          return;
+        }
+
+        window.setTimeout(() => {
+          flash.classList.add("flash-hidden");
+
+          window.setTimeout(() => {
+            flash.remove();
+          }, 320);
+        }, 3000);
       })();
     </script>
   </body>
