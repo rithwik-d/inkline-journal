@@ -39,25 +39,6 @@ export function SiteFooter() {
               A quiet, story-first place for personal writing — built for the moments
               that quietly shape who we become.
             </p>
-            <form
-              className="mt-6 flex items-center gap-2 max-w-sm"
-              onSubmit={(e) => e.preventDefault()}
-            >
-              <input
-                type="email"
-                placeholder="Your email"
-                className="flex-1 px-3 py-2 text-sm rounded-full border border-rule bg-card focus:outline-none focus:ring-2 focus:ring-terracotta/40"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm rounded-full bg-ink text-paper hover:bg-ink/85 transition"
-              >
-                Stay close
-              </button>
-            </form>
-            <p className="mt-2 text-xs text-ink-soft">
-              A slow letter, once a fortnight. Featured stories, prompts, and gentle notes from the journal.
-            </p>
           </div>
 
           {cols.map((c) => (
