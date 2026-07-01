@@ -1,70 +1,137 @@
 # Inkline Journal
 
-Inkline Journal is a public blog platform built with Node.js, Express, EJS, and Postgres.
+Inkline Journal is a story-first writing platform built with React, TypeScript, Node.js, Express, and PostgreSQL. It is meant for people who want to share lived experiences in a quieter, more thoughtful space.
 
 ## Core Features
 
-- Public home feed where everyone can read published stories
-- User signup with email + password
-- One-time email verification link during signup
-- Password-based sign-in after verification
-- Dashboard where logged-in users manage their own stories
-- Create, edit, publish/unpublish, and delete personal posts
-- Persistent data storage in Postgres
-- Responsive premium UI tuned for desktop and mobile
+- Google OAuth sign-in
+- Email/password sign-up with SMTP email verification
+- Public story discovery through themes and featured stories
+- Personal dashboard for drafts, published work, reading list, and notifications
+- PostgreSQL-backed persistence with startup migrations and seed content
 
 ## Tech Stack
 
+- React
+- TypeScript
+- Vite
 - Node.js
-- Express.js
-- EJS
-- Postgres (`pg`)
+- Express
+- PostgreSQL (`pg`)
 - `express-session`
-- `bcryptjs`
 - `nodemailer`
-- `method-override`
 
-## Setup
+## Local Setup
 
 ```bash
 npm install
 cp .env.example .env
-npm start
 ```
 
-App runs at:
+Create the local database before starting the app:
 
-```text
-http://localhost:3000
+```sql
+CREATE DATABASE inkline_journal_local;
 ```
 
-For development auto-reload:
+Then edit `.env` with your real local values and start the app:
 
 ```bash
 npm run dev
 ```
 
+Local URLs:
+
+```text
+client: http://localhost:5173
+server: http://localhost:3001
+```
+
+Important:
+
+- edit `.env`, not `.env.example`
+- `DATABASE_URL` must point to your local or hosted Postgres database
+- if your Postgres password contains `#`, `@`, or similar characters, URL-encode it in `DATABASE_URL`
+- email/password sign-up stays disabled until SMTP values are configured
+
 ## Environment
 
 Required:
 
-- `DATABASE_URL` (Postgres connection string)
+- `DATABASE_URL`
 - `SESSION_SECRET`
 
-Optional:
+Common:
 
-- `PGSSL` (`true` for hosted SSL-required Postgres providers, otherwise `false`)
-- `APP_BASE_URL` (for verification links)
+- `APP_BASE_URL`
+- `CLIENT_BASE_URL`
+- `PGSSL`
+- `SUPPORT_EMAIL`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_CALLBACK_URL`
+- `SMTP_FROM`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_SECURE`
 - `EMAIL_VERIFY_TTL_HOURS`
-- SMTP variables for email delivery
 
-## Verification Flow
+## Google OAuth Notes
 
-- On signup, the app emails a one-time verification link.
-- User clicks the link and is redirected to login.
-- Login works with email + password after verification.
+For Google Cloud OAuth client setup:
+
+- Authorized JavaScript origins:
+  - `https://inklinejournal.com`
+  - `http://localhost:5173`
+- Authorized redirect URIs:
+  - `https://inklinejournal.com/api/auth/google/callback`
+  - `http://localhost:3001/api/auth/google/callback`
+
+The app starts Google sign-in at:
+
+```text
+/api/auth/google
+```
+
+Google redirects back to:
+
+```text
+/api/auth/google/callback
+```
+
+## Email Verification Flow
+
+Email/password accounts are not signed in immediately after registration.
+
+Flow:
+
+1. user signs up with name, email, and password
+2. the server creates an unverified account
+3. Inkline sends a verification email from `SMTP_FROM`
+4. the user clicks the verification link
+5. only then can the user sign in with email/password
+
+Google sign-in still relies on Google's verified email state.
+
+## Production Deployment
+
+Deployment notes for GCP Cloud Run with Neon live in:
+
+- [`deploy/gcp-neon.md`](/Users/rithwik/Documents/Codex/2026-06-27/g/inkline-journal/deploy/gcp-neon.md)
+- [`deploy/cloud-run.env.example`](/Users/rithwik/Documents/Codex/2026-06-27/g/inkline-journal/deploy/cloud-run.env.example)
 
 ## Data Storage
 
-- Postgres tables are auto-created on startup.
-- Data is persistent and can be managed via `psql`, pgAdmin, or your cloud provider dashboard.
+The app auto-creates and migrates these main tables on startup:
+
+- `journal_users`
+- `themes`
+- `prompts`
+- `stories`
+- `comments`
+- `reading_list`
+- `notifications`
+- `email_verification_tokens`
+- `user_sessions`

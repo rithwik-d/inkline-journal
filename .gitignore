@@ -2,8 +2,10 @@ node_modules/
 npm-debug.log*
 .DS_Store
 .env
+dist/
 data/*.db
 data/*.db-*
 .vercel
 .npm-cache/
 .gcloud/
+deploy/cloud-run.env

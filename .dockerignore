@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.gitignore
+.DS_Store
+.env
+npm-debug.log*
+.gcloud
+.vercel
+.codex
+.agents
+deploy/cloud-run.env
