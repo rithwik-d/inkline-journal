@@ -10,14 +10,6 @@ const cols = [
     ],
   },
   {
-    title: "Write",
-    links: [
-      { to: "/auth", label: "Start writing" },
-      { to: "/about", label: "Why Inkline" },
-      { to: "/guidelines", label: "Writing guidelines" },
-    ],
-  },
-  {
     title: "Inkline",
     links: [
       { to: "/about", label: "About" },
@@ -27,7 +19,7 @@ const cols = [
     ],
   },
   {
-    title: "Quiet print",
+    title: "Terms",
     links: [
       { to: "/privacy", label: "Privacy" },
       { to: "/terms", label: "Terms" },
